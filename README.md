@@ -2,37 +2,48 @@
 
 # Morph
 
-A console-based image processing engine that uses nodes to apply and combine filters, enabling complex image transformations directly from the command line.
+**A console-based image processing engine for developers**
+
+Morph uses a node-based architecture to apply and combine filters, enabling complex image transformations directly from the command line.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/yourusername/morph)
 
 </div>
 
+---
+
+## Overview
+
+Morph is designed as a foundation for building powerful image processing workflows. Whether you're automating batch operations, building graphics applications, or integrating image manipulation into your development pipeline, Morph provides the tools you need.
+
 ## Features
 
-**Python Library**  
-Use Morph directly in your Python scripts and notebooks, to intergrate seamlessly any application or development environment
+### Multi-Language Support
+Morph integrates seamlessly across multiple environments with native support for Python, C++, and C. Use it directly in scripts, embed it in applications, or integrate it into your existing UI frameworks.
 
-**Extensible**  
-Designed to support a vast collection of composable image filters
+### Extensible Architecture
+Built from the ground up to support a comprehensive library of composable image filters. The modular design allows filters to be chained and combined to create sophisticated processing pipelines.
 
-## Status
+### Universal Integration
+Works with any application or development environment through its command-line interface, making it ideal for automation, scripting, and cross-platform workflows.
 
-Morph is currently in development. Check back soon for updates.
+## Development Status
+
+Morph is currently in active development. Star this repository to stay updated on releases and feature announcements.
 
 ## Contributing
 
-Interested in contributing? Watch this repository for updates on how you can get involved.
+We welcome contributions from the community. Watch this repository for upcoming contribution guidelines and development roadmap.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for full details.
 
 ---
 
 <div align="center">
 
-Built for developers who need powerful, scriptable image processing in their workflow.
+**Built for developers who demand powerful, scriptable image processing.**
 
 </div>
