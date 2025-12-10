@@ -4,14 +4,13 @@ A console-based image processing engine that uses nodes to apply and combine fil
 
 ## Features
 
-- **Node-Based Architecture**: Chain filters together to create complex processing pipelines
 - **Command-Line Interface**: Seamlessly integrate into any workflow or automation script
 - **Extensible Filter Library**: Designed to support a vast collection of composable image filters
 - **Universal Integration**: Works with any application or development environment
 
 ## Status
 
-Morph is currently in early development. Check back soon for updates!
+Morph is currently in development. Check back soon for updates!
 
 ## Contributing
 
