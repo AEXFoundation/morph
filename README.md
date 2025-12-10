@@ -20,13 +20,13 @@ Morph is designed as a foundation for building powerful image processing workflo
 ## Features
 
 ### Multi-Language Support
-Morph integrates seamlessly across multiple environments with native support for Python, C++, and C. Use it directly in scripts, embed it in applications, or integrate it into your existing UI frameworks.
+Native support for Python, C++, and C. Use it directly in scripts, embed it in applications, or integrate it into your UI frameworks.
 
 ### Extensible Architecture
-Built from the ground up to support a comprehensive library of composable image filters. The modular design allows filters to be chained and combined to create sophisticated processing pipelines.
+Built to support a comprehensive library of composable image filters. Chain and combine filters to create sophisticated processing pipelines.
 
-### Universal Integration
-Works with any application or development environment through its command-line interface, making it ideal for automation, scripting, and cross-platform workflows.
+### Command-Line Interface
+Direct command-line access makes it ideal for automation, scripting, and cross-platform workflows.
 
 ## Development Status
 
