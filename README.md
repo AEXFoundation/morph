@@ -34,7 +34,4 @@ Direct command-line access makes it ideal for automation, scripting, and cross-p
 
 ---
 
-## License
-
-MIT
 [© Aether, All Rights Reserved](https://www.instagram.com/aetherstudi0s/)
