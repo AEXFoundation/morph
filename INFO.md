@@ -9,18 +9,6 @@ Morph is designed as a **foundation for building powerful image processing workf
 
 ---
 
-## Set Up
-
-Ensure the **Morph Executable** and all your **images(s)** are in the **same folder**:
-
-```plaintext
-.
-├── Morph.exe
-└── yourImage(s)
-```
-
----
-
 ## Overview
 
 ### Multi-Language Support
