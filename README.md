@@ -1,6 +1,6 @@
 # Morph
 
-**is an image processing engine for developers.**
+**is an image processing engine that applies and combines filters, enabling complex image transformations directly from the command line.**
 
 Apply and combine filters to create complex image transformations.
 
