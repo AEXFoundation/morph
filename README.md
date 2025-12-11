@@ -2,8 +2,6 @@
 
 **is an image processing engine that applies and combines filters, enabling complex image transformations directly from the command line.**
 
-Apply and combine filters to create complex image transformations.
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/yourusername/morph)
 
