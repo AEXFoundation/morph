@@ -74,4 +74,4 @@ Filters are applied to the images currently in the input pipeline.
 
 ---
 
-[© Aether, All Rights Reserved](https://www.instagram.com/aetherstudi0s/)
+[© 2025 Aether, All Rights Reserved](https://www.instagram.com/aetherstudi0s/)
