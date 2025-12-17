@@ -1,4 +1,4 @@
-**Latest:** 0.0.3 (Alpha Release)
+**Latest:** 0.0.35 (Alpha Release)
 
 **Author:** [wzssmex@gmail.com](mailto:wzssmex@gmail.com).
 
@@ -63,14 +63,14 @@ The path (`@`), mode (`keep`/`clear`), and optional filename can appear in any o
 | **`@i`** | **Show Images:** Lists all current images stored in the input pipeline. | This replaces the old `list` command. |
 | **`exit`** | Exits the program. | Case-insensitive (`EXIT`, `exit`, `Exit` all work). |
 
-### 3. Filter Application (`@i <filter> [filename]`)
+### 3. Filter Application (`@i <filter> <percent> [filename]`)
 
 Filters are applied to the images currently in the input pipeline.
 
 | Command | Purpose | Rules & Notes |
 | :--- | :--- | :--- |
-| **`@i grayscale`** | Applies the Grayscale filter to **all** images in the input. | The filter name is case-insensitive. |
-| **`@i grayscale image.jpg`** | Applies the Grayscale filter to the single file `image.jpg`. | The filename must match the lowercase name in the input list. |
+| **`@i grayscale 50%`** | Applies the Grayscale filter to **all** images in the input. | The filter name is case-insensitive. |
+| **`@i grayscale 50% image.jpg`** | Applies the Grayscale filter to the single file `image.jpg`. | The filename must match the lowercase name in the input list. |
 
 ---
 

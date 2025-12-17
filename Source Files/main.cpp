@@ -44,16 +44,6 @@ std::vector<std::string> splitCommand(const std::string& input) {
 
 int main() {
     Pipeline pipeline;
-
-    std::cout << "Image Pipeline CLI" << std::endl;
-    std::cout << "Commands:" << std::endl;
-    std::cout << "  -i @<path>                    Add image(s) from path" << std::endl;
-    std::cout << "  @i                            Show images in input" << std::endl;
-    std::cout << "  @i <filter> [file]            Apply filter to input" << std::endl;
-    std::cout << "  -o @<path> [keep|clear] [file] Export images" << std::endl;
-    std::cout << "  exit                          Exit program" << std::endl;
-    std::cout << std::endl;
-
     bool running = true;
     while (running) {
         std::cout << "> ";
@@ -90,10 +80,21 @@ int main() {
             }
             else if (tokens.size() >= 2) {
                 std::string filter = tokens[1];
-                std::string target = (tokens.size() >= 3) ? tokens[2] : "";
+				std::string percent = (tokens.size() >= 3) ? tokens[2] : "";
+                std::string target = (tokens.size() >= 4) ? tokens[3] : "";
 
                 if (filter == "grayscale") {
-                    pipeline.applyGrayscale(target);
+                	size_t pos = percent.find('%');
+                	if(pos != std::string::npos)
+                		percent.erase(percent.begin() + pos);
+				    double val = 100;
+					try {
+				        val = std::stod(percent);
+				    } catch (const std::invalid_argument& e) {
+				        std::cerr << "Invalid Value: "<< percent << std::endl;
+				    }                    
+					
+					pipeline.applyGrayscale(target,val);
                 }
                 else {
                     std::cerr << "Unknown filter: " << filter << std::endl;

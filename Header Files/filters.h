@@ -111,7 +111,7 @@ public:
         return count > 0;
     }
 
-    bool applyGrayscale(const std::string& target = "") {
+    bool applyGrayscale(const std::string& target = "",double choice = 100) {
         std::vector<std::string> targets;
 
         if (target.empty()) {
@@ -142,6 +142,17 @@ public:
 
         std::cout << "Applying grayscale..." << std::endl;
 
+
+	    choice = std::max(0.0, std::min(100.0, choice));
+		
+		double blend = choice/100;
+
+	    const double rweight = 0.299;
+	    const double gweight = 0.587;
+	    const double bweight = 0.114;
+
+
+
         for (const auto& img_path : targets) {
             int width, height, channels;
             unsigned char* data = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
@@ -157,14 +168,22 @@ public:
                 unsigned char g = (channels > 1) ? data[idx + 1] : r;
                 unsigned char b = (channels > 2) ? data[idx + 2] : r;
 
-                unsigned char gray = static_cast<unsigned char>(
-                    0.299 * r + 0.587 * g + 0.114 * b
-                    );
+	            unsigned char gray = static_cast<unsigned char>(
+	                rweight * r + gweight * g + bweight * b
+	            );
+	            
+	            unsigned char new_r = static_cast<unsigned char>((1.0 - blend) * r + blend * gray);
+	            unsigned char new_g = static_cast<unsigned char>((1.0 - blend) * g + blend * gray);
+	            unsigned char new_b = static_cast<unsigned char>((1.0 - blend) * b + blend * gray);
 
-                data[idx] = gray;
-                if (channels > 1) data[idx + 1] = gray;
-                if (channels > 2) data[idx + 2] = gray;
-            }
+
+					            
+	            
+	            data[idx] = new_r;
+	            if (channels > 1) data[idx + 1] = new_g;
+	            if (channels > 2) data[idx + 2] = new_b;
+            
+			}
 
             bool success = false;
             fs::path path(img_path);
