@@ -90,10 +90,21 @@ int main() {
             }
             else if (tokens.size() >= 2) {
                 std::string filter = tokens[1];
-                std::string target = (tokens.size() >= 3) ? tokens[2] : "";
+				std::string percent = (tokens.size() >= 3) ? tokens[2] : "";
+                std::string target = (tokens.size() >= 4) ? tokens[3] : "";
 
                 if (filter == "grayscale") {
-                    pipeline.applyGrayscale(target);
+                	size_t pos = percent.find('%');
+                	if(pos != std::string::npos)
+                		percent.erase(percent.begin() + pos);
+				    double val = 100;
+					try {
+				        val = std::stod(percent);
+				    } catch (const std::invalid_argument& e) {
+				        std::cerr << "Invalid Value: "<< percent << std::endl;
+				    }                    
+					
+					pipeline.applyGrayscale(target,val);
                 }
                 else {
                     std::cerr << "Unknown filter: " << filter << std::endl;
