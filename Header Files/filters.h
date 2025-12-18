@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <algorithm>
+#include <memory>
 
 // External stb function declarations
 extern "C" {
@@ -18,60 +19,141 @@ extern "C" {
 
 namespace fs = std::filesystem;
 
+// Structure to hold image data in RAM
+struct ImageData {
+    std::string original_path;
+    std::string filename;
+    int width;
+    int height;
+    int channels;
+    std::unique_ptr<unsigned char[]> pixels;
+    bool modified;
+
+    ImageData() : width(0), height(0), channels(0), modified(false) {}
+    
+    // Move constructor
+    ImageData(ImageData&& other) noexcept
+        : original_path(std::move(other.original_path)),
+          filename(std::move(other.filename)),
+          width(other.width),
+          height(other.height),
+          channels(other.channels),
+          pixels(std::move(other.pixels)),
+          modified(other.modified) {
+        other.width = 0;
+        other.height = 0;
+        other.channels = 0;
+        other.modified = false;
+    }
+    
+    // Move assignment
+    ImageData& operator=(ImageData&& other) noexcept {
+        if (this != &other) {
+            original_path = std::move(other.original_path);
+            filename = std::move(other.filename);
+            width = other.width;
+            height = other.height;
+            channels = other.channels;
+            pixels = std::move(other.pixels);
+            modified = other.modified;
+            
+            other.width = 0;
+            other.height = 0;
+            other.channels = 0;
+            other.modified = false;
+        }
+        return *this;
+    }
+
+    // Delete copy constructor and copy assignment
+    ImageData(const ImageData&) = delete;
+    ImageData& operator=(const ImageData&) = delete;
+};
+
 class Pipeline {
 private:
+    std::string base_folder;
     std::string input_folder;
-    std::vector<std::string> input_images;
+    std::string output_folder;
+    std::vector<ImageData> loaded_images;
 
-    void refreshInputList() {
-        input_images.clear();
-        if (!fs::exists(input_folder)) return;
-
-        for (const auto& entry : fs::directory_iterator(input_folder)) {
-            if (entry.is_regular_file()) {
-                std::string ext = entry.path().extension().string();
-                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp" ||
-                    ext == ".tga" || ext == ".gif" || ext == ".webp" || ext == ".tiff" || ext == ".tif") {
-                    input_images.push_back(entry.path().string());
-                }
-            }
+    void initializeFolders() {
+        // Create Morph folder if it doesn't exist
+        if (!fs::exists(base_folder)) {
+            fs::create_directory(base_folder);
+            std::cout << "Created Morph folder: " << base_folder << std::endl;
         }
-    }
 
-public:
-    Pipeline() : input_folder("input") {
+        // Create input subfolder
         if (!fs::exists(input_folder)) {
             fs::create_directory(input_folder);
+            std::cout << "Created input folder: " << input_folder << std::endl;
         }
-        refreshInputList();
+
+        // Create output subfolder
+        if (!fs::exists(output_folder)) {
+            fs::create_directory(output_folder);
+            std::cout << "Created output folder: " << output_folder << std::endl;
+        }
     }
 
-    bool addInputFolder(const std::string& folder_path) {
-        if (!fs::exists(folder_path)) {
-            std::cerr << "Path not found: " << folder_path << std::endl;
+    bool loadImageToRAM(const std::string& file_path) {
+        ImageData img;
+        
+        // Load image data using stb_image
+        unsigned char* data = stbi_load(file_path.c_str(), &img.width, &img.height, &img.channels, 0);
+        
+        if (!data) {
+            std::cerr << "Failed to load: " << file_path << std::endl;
             return false;
         }
 
-        if (fs::is_regular_file(folder_path)) {
-            std::string ext = fs::path(folder_path).extension().string();
+        // Store image data in RAM
+        size_t data_size = img.width * img.height * img.channels;
+        img.pixels = std::unique_ptr<unsigned char[]>(new unsigned char[data_size]);
+        std::copy(data, data + data_size, img.pixels.get());
+        
+        // Store metadata
+        img.original_path = file_path;
+        img.filename = fs::path(file_path).filename().string();
+        std::transform(img.filename.begin(), img.filename.end(), img.filename.begin(), ::tolower);
+        img.modified = false;
+
+        stbi_image_free(data);
+        
+        loaded_images.push_back(std::move(img));
+        return true;
+    }
+
+public:
+    Pipeline() : base_folder("Morph"), 
+                 input_folder("Morph/input"), 
+                 output_folder("Morph/output") {
+        initializeFolders();
+    }
+
+    bool addInput(const std::string& path) {
+        if (!fs::exists(path)) {
+            std::cerr << "Path not found: " << path << std::endl;
+            return false;
+        }
+
+        // Handle single file
+        if (fs::is_regular_file(path)) {
+            std::string ext = fs::path(path).extension().string();
             std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+            
             if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp" ||
                 ext == ".tga" || ext == ".gif" || ext == ".webp" || ext == ".tiff" || ext == ".tif") {
-                fs::path src(folder_path);
-                std::string filename = src.filename().string();
-                std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-                fs::path dest = fs::path(input_folder) / filename;
-                try {
-                    fs::copy_file(src, dest, fs::copy_options::overwrite_existing);
-                    std::cout << "Added: " << filename << std::endl;
-                    refreshInputList();
+                
+                std::string filename = fs::path(path).filename().string();
+                std::cout << "Loading to RAM: " << filename << std::endl;
+                
+                if (loadImageToRAM(path)) {
+                    std::cout << "Added to RAM: " << filename << std::endl;
                     return true;
                 }
-                catch (const fs::filesystem_error& e) {
-                    std::cerr << "Failed to copy: " << e.what() << std::endl;
-                    return false;
-                }
+                return false;
             }
             else {
                 std::cerr << "Not a valid image file" << std::endl;
@@ -79,143 +161,152 @@ public:
             }
         }
 
-        if (!fs::is_directory(folder_path)) {
-            std::cerr << "Invalid path: " << folder_path << std::endl;
+        // Handle directory
+        if (!fs::is_directory(path)) {
+            std::cerr << "Invalid path: " << path << std::endl;
             return false;
         }
 
         int count = 0;
-        for (const auto& entry : fs::directory_iterator(folder_path)) {
+        for (const auto& entry : fs::directory_iterator(path)) {
             if (entry.is_regular_file()) {
                 std::string ext = entry.path().extension().string();
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+                
                 if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp" ||
                     ext == ".tga" || ext == ".gif" || ext == ".webp" || ext == ".tiff" || ext == ".tif") {
+                    
                     std::string filename = entry.path().filename().string();
-                    std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-                    fs::path dest = fs::path(input_folder) / filename;
-                    try {
-                        fs::copy_file(entry.path(), dest, fs::copy_options::overwrite_existing);
-                        std::cout << "Added: " << filename << std::endl;
+                    std::cout << "Loading to RAM: " << filename << std::endl;
+                    
+                    if (loadImageToRAM(entry.path().string())) {
                         count++;
-                    }
-                    catch (const fs::filesystem_error& e) {
-                        std::cerr << "Failed to copy " << filename << std::endl;
                     }
                 }
             }
         }
 
-        refreshInputList();
-        std::cout << "Added " << count << " image(s) from folder" << std::endl;
+        std::cout << "Loaded " << count << " image(s) to RAM" << std::endl;
         return count > 0;
     }
 
-    bool applyGrayscale(const std::string& target = "",double choice = 100) {
-        std::vector<std::string> targets;
-
-        if (target.empty()) {
-            targets = input_images;
-        }
-        else {
-            std::string target_lower = target;
-            std::transform(target_lower.begin(), target_lower.end(), target_lower.begin(), ::tolower);
-
-            auto it = std::find_if(input_images.begin(), input_images.end(),
-                [&target_lower](const std::string& path) {
-                    std::string filename = fs::path(path).filename().string();
-                    std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-                    return filename == target_lower;
-                });
-
-            if (it == input_images.end()) {
-                std::cerr << "Image not found: " << target << std::endl;
-                return false;
-            }
-            targets.push_back(*it);
-        }
-
-        if (targets.empty()) {
-            std::cerr << "Input is empty. Use: -i @\"path\"" << std::endl;
+    bool applyGrayscale(const std::string& target = "", double choice = 100) {
+        if (loaded_images.empty()) {
+            std::cerr << "No images loaded in RAM. Use: -i @\"path\"" << std::endl;
             return false;
         }
 
-        std::cout << "Applying grayscale..." << std::endl;
+        choice = std::max(0.0, std::min(100.0, choice));
+        double blend = choice / 100.0;
 
+        const double rweight = 0.299;
+        const double gweight = 0.587;
+        const double bweight = 0.114;
 
-	    choice = std::max(0.0, std::min(100.0, choice));
-		
-		double blend = choice/100;
+        std::cout << "Applying grayscale (" << choice << "%) in RAM..." << std::endl;
 
-	    const double rweight = 0.299;
-	    const double gweight = 0.587;
-	    const double bweight = 0.114;
-
-
-
-        for (const auto& img_path : targets) {
-            int width, height, channels;
-            unsigned char* data = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
-
-            if (!data) {
-                std::cerr << "Failed to load: " << img_path << std::endl;
-                continue;
+        int processed = 0;
+        for (auto& img : loaded_images) {
+            // If target specified, only process matching image
+            if (!target.empty()) {
+                std::string target_lower = target;
+                std::transform(target_lower.begin(), target_lower.end(), target_lower.begin(), ::tolower);
+                if (img.filename != target_lower) {
+                    continue;
+                }
             }
 
-            for (int i = 0; i < width * height; i++) {
-                int idx = i * channels;
-                unsigned char r = data[idx];
-                unsigned char g = (channels > 1) ? data[idx + 1] : r;
-                unsigned char b = (channels > 2) ? data[idx + 2] : r;
+            // Process pixels in RAM
+            for (int i = 0; i < img.width * img.height; i++) {
+                int idx = i * img.channels;
+                unsigned char r = img.pixels[idx];
+                unsigned char g = (img.channels > 1) ? img.pixels[idx + 1] : r;
+                unsigned char b = (img.channels > 2) ? img.pixels[idx + 2] : r;
 
-	            unsigned char gray = static_cast<unsigned char>(
-	                rweight * r + gweight * g + bweight * b
-	            );
-	            
-	            unsigned char new_r = static_cast<unsigned char>((1.0 - blend) * r + blend * gray);
-	            unsigned char new_g = static_cast<unsigned char>((1.0 - blend) * g + blend * gray);
-	            unsigned char new_b = static_cast<unsigned char>((1.0 - blend) * b + blend * gray);
+                unsigned char gray = static_cast<unsigned char>(
+                    rweight * r + gweight * g + bweight * b
+                );
 
+                unsigned char new_r = static_cast<unsigned char>((1.0 - blend) * r + blend * gray);
+                unsigned char new_g = static_cast<unsigned char>((1.0 - blend) * g + blend * gray);
+                unsigned char new_b = static_cast<unsigned char>((1.0 - blend) * b + blend * gray);
 
-					            
-	            
-	            data[idx] = new_r;
-	            if (channels > 1) data[idx + 1] = new_g;
-	            if (channels > 2) data[idx + 2] = new_b;
-            
-			}
-
-            bool success = false;
-            fs::path path(img_path);
-            std::string ext = path.extension().string();
-            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-            if (ext == ".png") {
-                success = stbi_write_png(img_path.c_str(), width, height, channels, data, width * channels);
-            }
-            else if (ext == ".jpg" || ext == ".jpeg") {
-                success = stbi_write_jpg(img_path.c_str(), width, height, channels, data, 95);
-            }
-            else if (ext == ".bmp") {
-                success = stbi_write_bmp(img_path.c_str(), width, height, channels, data);
+                img.pixels[idx] = new_r;
+                if (img.channels > 1) img.pixels[idx + 1] = new_g;
+                if (img.channels > 2) img.pixels[idx + 2] = new_b;
             }
 
-            if (success) {
-                std::cout << "[OK] " << path.filename().string() << std::endl;
-            }
-            else {
-                std::cerr << "[FAIL] " << path.filename().string() << std::endl;
-            }
+            img.modified = true;
+            std::cout << "[OK] " << img.filename << " (processed in RAM)" << std::endl;
+            processed++;
 
-            stbi_image_free(data);
+            if (!target.empty()) break; // Only process one if target specified
+        }
+
+        if (processed == 0 && !target.empty()) {
+            std::cerr << "Image not found in RAM: " << target << std::endl;
+            return false;
         }
 
         return true;
     }
 
-    bool exportOutput(const std::string& output_path, bool clearInput = true, const std::string& target = "") {
-        if (input_images.empty()) {
-            std::cerr << "Input is empty. Use: -i @\"path\"" << std::endl;
+    bool savePreview(const std::string& target = "") {
+        if (loaded_images.empty()) {
+            std::cerr << "No images loaded in RAM." << std::endl;
+            return false;
+        }
+
+        std::cout << "Saving preview to: " << output_folder << std::endl;
+
+        int saved = 0;
+        for (const auto& img : loaded_images) {
+            // If target specified, only save matching image
+            if (!target.empty()) {
+                std::string target_lower = target;
+                std::transform(target_lower.begin(), target_lower.end(), target_lower.begin(), ::tolower);
+                if (img.filename != target_lower) {
+                    continue;
+                }
+            }
+
+            fs::path output_path = fs::path(output_folder) / img.filename;
+            fs::path original_path(img.original_path);
+            std::string ext = original_path.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+            bool success = false;
+            if (ext == ".png") {
+                success = stbi_write_png(output_path.string().c_str(), img.width, img.height, 
+                                        img.channels, img.pixels.get(), img.width * img.channels);
+            }
+            else if (ext == ".jpg" || ext == ".jpeg") {
+                success = stbi_write_jpg(output_path.string().c_str(), img.width, img.height, 
+                                        img.channels, img.pixels.get(), 95);
+            }
+            else if (ext == ".bmp") {
+                success = stbi_write_bmp(output_path.string().c_str(), img.width, img.height, 
+                                        img.channels, img.pixels.get());
+            }
+
+            if (success) {
+                std::cout << "[OK] " << img.filename << std::endl;
+                saved++;
+            }
+            else {
+                std::cerr << "[FAIL] " << img.filename << std::endl;
+            }
+
+            if (!target.empty()) break;
+        }
+
+        std::cout << "Saved " << saved << " preview(s) to disk" << std::endl;
+        return saved > 0;
+    }
+
+    bool exportOutput(const std::string& output_path, bool clearRAM = true, const std::string& target = "") {
+        if (loaded_images.empty()) {
+            std::cerr << "No images loaded in RAM." << std::endl;
             return false;
         }
 
@@ -230,80 +321,92 @@ public:
             }
         }
 
-        std::cout << "Exporting to: " << output_path << std::endl;
+        std::cout << "Exporting from RAM to: " << output_path << std::endl;
 
-        std::vector<std::string> to_export;
-        std::vector<std::string> to_remove;
+        std::vector<size_t> to_remove;
+        int exported = 0;
 
-        if (target.empty()) {
-            to_export = input_images;
-            if (clearInput) {
-                to_remove = input_images;
-            }
-        }
-        else {
-            std::string target_lower = target;
-            std::transform(target_lower.begin(), target_lower.end(), target_lower.begin(), ::tolower);
+        for (size_t i = 0; i < loaded_images.size(); i++) {
+            const auto& img = loaded_images[i];
 
-            auto it = std::find_if(input_images.begin(), input_images.end(),
-                [&target_lower](const std::string& path) {
-                    std::string filename = fs::path(path).filename().string();
-                    std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-                    return filename == target_lower;
-                });
-
-            if (it == input_images.end()) {
-                std::cerr << "Image not found: " << target << std::endl;
-                return false;
-            }
-            to_export.push_back(*it);
-            if (clearInput) {
-                to_remove.push_back(*it);
-            }
-        }
-
-        for (const auto& img : to_export) {
-            fs::path src(img);
-            fs::path dest = out_dir / src.filename();
-
-            try {
-                fs::copy_file(src, dest, fs::copy_options::overwrite_existing);
-                std::cout << "[OK] " << src.filename().string() << std::endl;
-            }
-            catch (const fs::filesystem_error& e) {
-                std::cerr << "[FAIL] " << src.filename().string() << std::endl;
-            }
-        }
-
-        std::cout << "Export complete!" << std::endl;
-
-        if (clearInput && !to_remove.empty()) {
-            std::cout << "Clearing from input..." << std::endl;
-            for (const auto& img : to_remove) {
-                try {
-                    fs::remove(img);
-                    input_images.erase(std::remove(input_images.begin(), input_images.end(), img), input_images.end());
-                }
-                catch (const fs::filesystem_error& e) {
-                    std::cerr << "Failed to remove: " << fs::path(img).filename().string() << std::endl;
+            // If target specified, only export matching image
+            if (!target.empty()) {
+                std::string target_lower = target;
+                std::transform(target_lower.begin(), target_lower.end(), target_lower.begin(), ::tolower);
+                if (img.filename != target_lower) {
+                    continue;
                 }
             }
-            std::cout << "Input cleared!" << std::endl;
+
+            fs::path output_file = out_dir / img.filename;
+            fs::path original_path(img.original_path);
+            std::string ext = original_path.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+            bool success = false;
+            if (ext == ".png") {
+                success = stbi_write_png(output_file.string().c_str(), img.width, img.height, 
+                                        img.channels, img.pixels.get(), img.width * img.channels);
+            }
+            else if (ext == ".jpg" || ext == ".jpeg") {
+                success = stbi_write_jpg(output_file.string().c_str(), img.width, img.height, 
+                                        img.channels, img.pixels.get(), 95);
+            }
+            else if (ext == ".bmp") {
+                success = stbi_write_bmp(output_file.string().c_str(), img.width, img.height, 
+                                        img.channels, img.pixels.get());
+            }
+
+            if (success) {
+                std::cout << "[OK] " << img.filename << std::endl;
+                exported++;
+                if (clearRAM) {
+                    to_remove.push_back(i);
+                }
+            }
+            else {
+                std::cerr << "[FAIL] " << img.filename << std::endl;
+            }
+
+            if (!target.empty()) break;
         }
 
-        return true;
+        std::cout << "Export complete! (" << exported << " file(s))" << std::endl;
+
+        if (clearRAM && !to_remove.empty()) {
+            std::cout << "Clearing " << to_remove.size() << " image(s) from RAM..." << std::endl;
+            // Remove in reverse order to maintain indices
+            for (auto it = to_remove.rbegin(); it != to_remove.rend(); ++it) {
+                loaded_images.erase(loaded_images.begin() + *it);
+            }
+            std::cout << "RAM cleared!" << std::endl;
+        }
+
+        return exported > 0;
     }
 
     void listInput() const {
-        if (input_images.empty()) {
-            std::cout << "Input folder is empty." << std::endl;
+        if (loaded_images.empty()) {
+            std::cout << "No images loaded in RAM." << std::endl;
             return;
         }
 
-        std::cout << "Images in input (" << input_images.size() << "):" << std::endl;
-        for (const auto& img : input_images) {
-            std::cout << "  - " << fs::path(img).filename().string() << std::endl;
+        std::cout << "Images in RAM (" << loaded_images.size() << "):" << std::endl;
+        for (const auto& img : loaded_images) {
+            std::string status = img.modified ? " [MODIFIED]" : "";
+            size_t ram_size = img.width * img.height * img.channels;
+            double mb = ram_size / (1024.0 * 1024.0);
+            std::cout << "  - " << img.filename << " (" << img.width << "x" << img.height 
+                     << ", " << mb << " MB)" << status << std::endl;
         }
+    }
+
+    size_t getRAMUsage() const {
+        size_t total = 0;
+        for (const auto& img : loaded_images) {
+            total += img.width * img.height * img.channels;
+        }
+        return total;
     }
 };
 
